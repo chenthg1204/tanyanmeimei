@@ -94,7 +94,6 @@
       }
     }
 
-    // 鎖定登出功能
     function logoutAdmin() {
       localStorage.removeItem("admin_authenticated");
       if (syncInterval) clearInterval(syncInterval);
@@ -124,6 +123,18 @@
       } catch(e) {}
     }
 
+    // 格式化訂單時間（若收到 ISO 字串轉為台灣時間 HH:mm:ss）
+    function formatOrderTime(timeStr) {
+      if (!timeStr) return "";
+      if (typeof timeStr === "string" && (timeStr.includes("T") || timeStr.includes("Z"))) {
+        const d = new Date(timeStr);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleTimeString("zh-TW", { hour12: false, timeZone: "Asia/Taipei" });
+        }
+      }
+      return timeStr;
+    }
+
     async function fetchOrders() {
       try {
         const res = await fetch(GAS_API_URL);
@@ -148,13 +159,14 @@
 
       orders.slice().reverse().forEach(o => {
         const isDone = o.status === "已完成";
+        const displayTime = formatOrderTime(o.time);
         const card = document.createElement("div");
         card.className = `order-card ${isDone ? 'done' : ''}`;
         card.innerHTML = `
           <div>
             <div class="card-head">
               <span class="order-no">${o.orderNo}</span>
-              <span class="dining-tag">${o.diningType} (${o.time})</span>
+              <span class="dining-tag">${o.diningType} (${displayTime})</span>
             </div>
             <div class="card-body">${o.items}</div>
           </div>
