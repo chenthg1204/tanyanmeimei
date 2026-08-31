@@ -72,7 +72,7 @@
   <div class="cart-bar">
     <div class="cart-summary">
       <div>已選 <b id="cartCount">0</b> 份</div>
-      <div class="cart-price">小計: $<span id="cartTotal">0</span></div>
+      <div class="cart-price">小計: NT$ <span id="cartTotal">0</span></div>
     </div>
     <div class="cart-actions">
       <button class="btn-cart-view" onclick="openCartModal()">明細</button>
@@ -92,7 +92,7 @@
       </div>
       <div style="display:flex; gap:8px;">
         <button class="btn-cart-view" style="flex:1;" onclick="closeOptModal()">取消</button>
-        <button class="btn-submit" style="flex:2;" onclick="addToCartConfirm()">加入購物車 ($<span id="mTotal">0</span>)</button>
+        <button class="btn-submit" style="flex:2;" onclick="addToCartConfirm()">加入購物車 (NT$ <span id="mTotal">0</span>)</button>
       </div>
     </div>
   </div>
@@ -102,7 +102,7 @@
     <div class="modal-content">
       <div class="modal-title">已點餐點明細</div>
       <div id="cartDetailList"></div>
-      <div style="text-align:right; font-weight:bold; margin: 12px 0;">總計：$<span id="cartModalTotal">0</span></div>
+      <div style="text-align:right; font-weight:bold; margin: 12px 0;">總計：NT$ <span id="cartModalTotal">0</span></div>
       <button class="btn-submit" style="width:100%;" onclick="closeCartModal()">關閉</button>
     </div>
   </div>
@@ -119,7 +119,7 @@
   </div>
 
   <script>
-    // 貼上你的 Google Apps Script 部署網址
+    // 你的 Google Apps Script 部署網址
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbztEcNtpbfxy8_ngiGxaK83GCXTdhMoRZQHf_QjsPxVAQJg1YQtlSzwCPVb-Tzmr5-u/exec";
 
     const fullMenu = {
@@ -227,7 +227,7 @@
         { name: "漢堡肉排", price: 15, options: [] },
         { name: "火腿片", price: 15, options: [] },
         { name: "培根片", price: 15, options: [] },
-        { name: "煎蛋", price: 10, options: [] },
+        { name: "荷包蛋", price: 10, options: ["eggDoneness"] },
         { name: "玉米單點", price: 10, options: [] },
         { name: "肉鬆單點", price: 10, options: [] }
       ],
@@ -246,7 +246,6 @@
         { name: "薯條", price: 25, options: [] },
         { name: "一口餃", price: 20, options: [] },
         { name: "熱狗", price: 20, options: [] },
-        { name: "荷包蛋", price: 10, options: ["eggDoneness"] }
       ],
       "果醬": [
         { name: "草莓果醬", price: 15, options: ["toastType"] },
@@ -309,7 +308,7 @@
         div.innerHTML = `
           <div class="item-info">
             <div class="item-name">${item.name}</div>
-            <div class="item-price">$${item.price}起</div>
+            <div class="item-price">NT$ ${item.price} 起</div>
           </div>
           <button class="btn-add" onclick="openOptModal('${item.name}')">+ 點餐</button>
         `;
@@ -321,7 +320,7 @@
       modalItem = fullMenu[currentTab].find(i => i.name === itemName);
       modalQty = 1;
       document.getElementById("mQty").innerText = 1;
-      selectedOpts = { cheese: false, onion: "加洋蔥", crust: "不切邊", toastType: "薄片", size: "小杯", temp: "冰", sauce: "無", eggDoneness: "全熟" };
+      selectedOpts = { cheese: false, onion: "加洋蔥", crust: "不切邊", toastType: "薄片", size: "小杯", temp: "冰", sauce: "", eggDoneness: "全熟" };
       
       document.getElementById("mItemName").innerText = modalItem.name;
       const optsContainer = document.getElementById("modalOptions");
@@ -329,17 +328,20 @@
 
       if (modalItem.options.includes("onion")) optsContainer.innerHTML += renderChipGroup("洋蔥", ["加洋蔥", "不加洋蔥"], "onion");
       if (modalItem.options.includes("crust")) optsContainer.innerHTML += renderChipGroup("吐司邊", ["不切邊", "切邊"], "crust");
-      if (modalItem.options.includes("toastType")) optsContainer.innerHTML += renderChipGroup("吐司類型", ["薄片", "厚片(+$10)"], "toastType");
-      if (modalItem.options.includes("drinkSize")) optsContainer.innerHTML += renderChipGroup("容量", ["小杯", "大杯(+$5)"], "size");
+      if (modalItem.options.includes("toastType")) optsContainer.innerHTML += renderChipGroup("吐司類型", ["薄片", "厚片(+NT$ 10)"], "toastType");
+      if (modalItem.options.includes("drinkSize")) optsContainer.innerHTML += renderChipGroup("容量", ["小杯", "大杯(+NT$ 5)"], "size");
       if (modalItem.options.includes("drinkTemp")) optsContainer.innerHTML += renderChipGroup("溫度", ["冰", "溫"], "temp");
-      if (modalItem.options.includes("sauce")) optsContainer.innerHTML += renderChipGroup("醬料", ["胡椒", "醬油膏", "辣醬", "不加醬"], "sauce");
+      if (modalItem.options.includes("sauce")) {
+        selectedOpts.sauce = "胡椒";
+        optsContainer.innerHTML += renderChipGroup("醬料", ["胡椒", "醬油膏", "辣醬", "不加醬"], "sauce");
+      }
       if (modalItem.options.includes("eggDoneness")) optsContainer.innerHTML += renderChipGroup("熟度", ["全熟", "半熟"], "eggDoneness");
       if (modalItem.options.includes("cheese")) {
         optsContainer.innerHTML += `
           <div class="opt-group">
             <div class="opt-title">加料</div>
             <div class="opt-chips">
-              <div class="opt-chip" id="opt-cheese" onclick="toggleCheese()">加起司 (+$5)</div>
+              <div class="opt-chip" id="opt-cheese" onclick="toggleCheese()">加起司 (+NT$ 5)</div>
             </div>
           </div>
         `;
@@ -383,8 +385,8 @@
     function calcUnitPrice() {
       let p = modalItem.price;
       if (selectedOpts.cheese) p += 5;
-      if (selectedOpts.toastType === "厚片(+$10)") p += 10;
-      if (selectedOpts.size === "大杯(+$5)") p += 5;
+      if (selectedOpts.toastType === "厚片(+NT$ 10)") p += 10;
+      if (selectedOpts.size === "大杯(+NT$ 5)") p += 5;
       return p;
     }
 
@@ -397,11 +399,9 @@
       document.getElementById("optModal").style.display = "none";
     }
 
-// 加入購物車
     function addToCartConfirm() {
       let optTexts = [];
       
-      // 只有當該餐點有支援該選項時，才加入備註字串
       if (modalItem.options && modalItem.options.includes("onion")) {
         optTexts.push(selectedOpts.onion);
       }
@@ -409,25 +409,24 @@
         optTexts.push(selectedOpts.crust);
       }
       if (modalItem.options && modalItem.options.includes("toastType")) {
-        optTexts.push(selectedOpts.toastType);
+        optTexts.push(selectedOpts.toastType.replace("(+NT$ 10)", ""));
       }
       if (modalItem.options && modalItem.options.includes("drinkSize")) {
-        optTexts.push(selectedOpts.size);
+        optTexts.push(selectedOpts.size.replace("(+NT$ 5)", ""));
       }
       if (modalItem.options && modalItem.options.includes("drinkTemp")) {
         optTexts.push(selectedOpts.temp);
       }
-      if (modalItem.options && modalItem.options.includes("sauce") && selectedOpts.sauce !== "不加醬" && selectedOpts.sauce !== "無") {
+      if (modalItem.options && modalItem.options.includes("sauce") && selectedOpts.sauce && selectedOpts.sauce !== "不加醬") {
         optTexts.push(selectedOpts.sauce);
       }
       if (modalItem.options && modalItem.options.includes("eggDoneness")) {
         optTexts.push(selectedOpts.eggDoneness);
       }
-      if (selectedOpts.cheese) {
+      if (modalItem.options && modalItem.options.includes("cheese") && selectedOpts.cheese) {
         optTexts.push("加起司");
       }
 
-      // 過濾掉空字串或無效文字
       const cleanDesc = optTexts.filter(t => t && t.trim() !== "").join(", ");
 
       cart.push({
@@ -465,7 +464,7 @@
               <div style="font-size:12px; color:#666;">${c.desc || '無特殊備註'}</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-weight:bold; color:#d32f2f;">$${c.price * c.qty}</div>
+              <div style="font-weight:bold; color:#d32f2f;">NT$ ${c.price * c.qty}</div>
               <button onclick="removeCartItem(${idx})" style="border:none; background:none; color:#999; font-size:12px; cursor:pointer;">刪除</button>
             </div>
           </div>
@@ -484,7 +483,7 @@
       document.getElementById("cartModal").style.display = "none";
     }
 
-    // 送出點餐 (串接 Google Apps Script 取號)
+    // 送出點餐
     async function submitOrder() {
       if (cart.length === 0) {
         alert("購物車內尚未加入餐點！");
@@ -520,7 +519,6 @@
           alert("送單發生錯誤：" + result.message);
         }
       } catch (err) {
-        // 若未串接或網路離線，提供備用本機取號
         const fallbackNo = "#" + ("0000" + (Math.floor(Math.random() * 999) + 1)).slice(-4);
         document.getElementById("orderNoText").innerText = fallbackNo;
         document.getElementById("donePayTotal").innerText = totalPrice;
