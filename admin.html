@@ -159,7 +159,7 @@
             <div class="card-body">${o.items}</div>
           </div>
           <div class="card-foot">
-            <div class="order-total">$${o.total}</div>
+            <div class="order-total">NT$ ${o.total}</div>
             <button class="btn-print" ${isDone ? 'disabled' : ''} onclick="confirmAndPrint(${o.row}, '${o.orderNo}', '${o.diningType}', '${encodeURIComponent(o.items)}', '${o.total}')">
               ${isDone ? '已完成出單' : '收款並出單'}
             </button>
@@ -183,7 +183,7 @@
         </div>
         <div style="margin:8px 0; font-size:14px; line-height:1.4;">${items.replace(/\n/g, '<br>')}</div>
         <div style="border-top:1px dashed #000; padding-top:4px; text-align:right; font-size:16px; font-weight:bold;">
-          總金額: $${total}
+          總金額: NT$ ${total} 元
         </div>
       `;
 
