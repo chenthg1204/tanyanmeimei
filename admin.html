@@ -109,6 +109,19 @@
       }
     }
 
+    // 將任何傳入的日期格式強制清理為 yyyy-mm-dd
+    function formatOrderTime(rawStr) {
+      if (!rawStr) return "";
+      const d = new Date(rawStr);
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      return String(rawStr).split("T")[0].split(" ")[0];
+    }
+
     function playBeep() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -121,18 +134,6 @@
         gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
         osc.stop(ctx.currentTime + 0.5);
       } catch(e) {}
-    }
-
-    // 格式化訂單時間（若收到 ISO 字串轉為台灣時間 HH:mm:ss）
-    function formatOrderTime(timeStr) {
-      if (!timeStr) return "";
-      if (typeof timeStr === "string" && (timeStr.includes("T") || timeStr.includes("Z"))) {
-        const d = new Date(timeStr);
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleTimeString("zh-TW", { hour12: false, timeZone: "Asia/Taipei" });
-        }
-      }
-      return timeStr;
     }
 
     async function fetchOrders() {
@@ -172,7 +173,7 @@
           </div>
           <div class="card-foot">
             <div class="order-total">NT$ ${o.total}</div>
-            <button class="btn-print" ${isDone ? 'disabled' : ''} onclick="confirmAndPrint(${o.row}, '${o.orderNo}', '${o.diningType}', '${encodeURIComponent(o.items)}', '${o.total}')">
+            <button class="btn-print" ${isDone ? 'disabled' : ''} onclick="confirmAndPrint(${o.row}, '${o.orderNo}', '${o.diningType}', '${encodeURIComponent(o.items)}', '${o.total}', '${displayTime}')">
               ${isDone ? '已完成出單' : '收款並出單'}
             </button>
           </div>
@@ -181,7 +182,7 @@
       });
     }
 
-    async function confirmAndPrint(row, orderNo, diningType, itemsEncoded, total) {
+    async function confirmAndPrint(row, orderNo, diningType, itemsEncoded, total, displayTime) {
       const items = decodeURIComponent(itemsEncoded);
 
       const printDiv = document.getElementById("printArea");
@@ -191,11 +192,11 @@
         <div style="text-align:center; font-size:24px; font-weight:bold; margin:4px 0;">${orderNo}</div>
         <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px dashed #000; padding-bottom:4px;">
           <span>${diningType}</span>
-          <span>${new Date().toLocaleTimeString()}</span>
+          <span>${displayTime}</span>
         </div>
         <div style="margin:8px 0; font-size:14px; line-height:1.4;">${items.replace(/\n/g, '<br>')}</div>
         <div style="border-top:1px dashed #000; padding-top:4px; text-align:right; font-size:16px; font-weight:bold;">
-          總金額: NT$ ${total} 元
+          總金額: NT$ ${total}
         </div>
       `;
 
