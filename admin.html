@@ -27,6 +27,12 @@
     .btn-print { background: #d32f2f; color: white; border: none; padding: 10px 16px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; }
     .btn-print:disabled { background: #ccc; cursor: not-allowed; }
 
+    /* 密碼驗證遮罩 */
+    #authOverlay { position: fixed; inset: 0; background: #263238; z-index: 999; display: flex; align-items: center; justify-content: center; }
+    .auth-box { background: white; padding: 28px; border-radius: 12px; width: 85%; max-width: 340px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .auth-input { width: 100%; padding: 12px; font-size: 18px; border: 1px solid #ccc; border-radius: 8px; text-align: center; margin: 16px 0; letter-spacing: 4px; }
+    .btn-auth { width: 100%; background: #d32f2f; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; }
+
     /* 熱感應小票列印專用樣式 */
     @media print {
       body * { visibility: hidden; }
@@ -37,6 +43,17 @@
 </head>
 <body>
 
+  <!-- 密碼登入遮罩 -->
+  <div id="authOverlay">
+    <div class="auth-box">
+      <h3 style="margin-top:0;">美又美 接單後台</h3>
+      <p style="color:#666; font-size:14px; margin:0;">請輸入店家管理密碼</p>
+      <input type="password" class="auth-input" id="pwdInput" placeholder="••••" maxlength="8">
+      <button class="btn-auth" onclick="verifyPassword()">進入系統</button>
+      <div id="pwdError" style="color:#d32f2f; font-size:13px; margin-top:8px; display:none;">密碼錯誤，請重新輸入</div>
+    </div>
+  </div>
+
   <header>
     <h2 style="margin:0; font-size:20px;">美又美 潭陽店 - 接單櫃檯</h2>
     <div class="status-badge" id="syncStatus">連線中...</div>
@@ -44,16 +61,39 @@
 
   <div class="grid" id="ordersGrid"></div>
 
-  <!-- 列印專用隱藏區塊 -->
   <div id="printArea" style="display:none;"></div>
 
   <script>
-    // 貼上你的 Google Apps Script 網址
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzcHD3IRPUs26K3Q-MOyEn3NEVgmznLMmcTM1xXLATBhx9Qi3Wc8d_tw1VCE4_3hBGE/exec";
+    // 1. 設定你的 Google Apps Script 網址
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw0-SAMPLE_URL/exec";
+
+    // 2. 自訂店家後台管理密碼
+    const ADMIN_PASSWORD = "1023";
+
+    // 檢查本機是否已經驗證過
+    if (localStorage.getItem("admin_authenticated") === "true") {
+      document.getElementById("authOverlay").style.display = "none";
+      initAdmin();
+    }
+
+    function verifyPassword() {
+      const input = document.getElementById("pwdInput").value;
+      if (input === ADMIN_PASSWORD) {
+        localStorage.setItem("admin_authenticated", "true");
+        document.getElementById("authOverlay").style.display = "none";
+        initAdmin();
+      } else {
+        document.getElementById("pwdError").style.display = "block";
+      }
+    }
 
     let knownOrderCount = 0;
 
-    // 提示音效 (使用瀏覽器 Audio API 合成音)
+    function initAdmin() {
+      fetchOrders();
+      setInterval(fetchOrders, 5000);
+    }
+
     function playBeep() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -61,21 +101,19 @@
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.frequency.value = 880; // A5 頻率
+        osc.frequency.value = 880;
         osc.start();
         gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
         osc.stop(ctx.currentTime + 0.5);
       } catch(e) {}
     }
 
-    // 定時抓取訂單
     async function fetchOrders() {
       try {
         const res = await fetch(GAS_API_URL);
         const orders = await res.json();
         document.getElementById("syncStatus").innerText = "最後同步：" + new Date().toLocaleTimeString();
         
-        // 判斷是否有新訂單進入
         const pendingOrders = orders.filter(o => o.status === "待處理");
         if (pendingOrders.length > knownOrderCount) {
           playBeep();
@@ -92,7 +130,6 @@
       const grid = document.getElementById("ordersGrid");
       grid.innerHTML = "";
 
-      // 倒序排列，最新訂單排在最前
       orders.slice().reverse().forEach(o => {
         const isDone = o.status === "已完成";
         const card = document.createElement("div");
@@ -116,11 +153,9 @@
       });
     }
 
-    // 店家確認收款 ➔ 呼叫出單機列印 ➔ 標記已完成
     async function confirmAndPrint(row, orderNo, diningType, itemsEncoded, total) {
       const items = decodeURIComponent(itemsEncoded);
 
-      // 產生熱感應單內容
       const printDiv = document.getElementById("printArea");
       printDiv.style.display = "block";
       printDiv.innerHTML = `
@@ -136,11 +171,9 @@
         </div>
       `;
 
-      // 喚醒系統列印 (TM-m30III 會透過 Wi-Fi 直接印出)
       window.print();
       printDiv.style.display = "none";
 
-      // 更新試算表狀態為「已完成」
       await fetch(GAS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -149,10 +182,6 @@
 
       fetchOrders();
     }
-
-    // 初次載入與每 5 秒輪詢一次
-    fetchOrders();
-    setInterval(fetchOrders, 5000);
   </script>
 </body>
 </html>
