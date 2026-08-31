@@ -9,8 +9,11 @@
     body { margin: 0; background: #eceff1; padding: 16px; }
     
     header { display: flex; justify-content: space-between; align-items: center; background: #263238; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
     .status-badge { font-size: 14px; background: #37474f; padding: 4px 10px; border-radius: 12px; }
-    
+    .btn-logout { background: #455a64; color: white; border: 1px solid #607d8b; padding: 4px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .btn-logout:hover { background: #cfd8dc; color: #263238; }
+
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
     
     .order-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; border-left: 6px solid #d32f2f; }
@@ -48,7 +51,7 @@
     <div class="auth-box">
       <h3 style="margin-top:0;">美又美 接單後台</h3>
       <p style="color:#666; font-size:14px; margin:0;">請輸入店家管理密碼</p>
-      <input type="password" class="auth-input" id="pwdInput" placeholder="••••" maxlength="8">
+      <input type="password" class="auth-input" id="pwdInput" placeholder="••••" maxlength="8" onkeydown="if(event.key==='Enter') verifyPassword()">
       <button class="btn-auth" onclick="verifyPassword()">進入系統</button>
       <div id="pwdError" style="color:#d32f2f; font-size:13px; margin-top:8px; display:none;">密碼錯誤，請重新輸入</div>
     </div>
@@ -56,7 +59,10 @@
 
   <header>
     <h2 style="margin:0; font-size:20px;">美又美 潭陽店 - 接單櫃檯</h2>
-    <div class="status-badge" id="syncStatus">連線中...</div>
+    <div class="header-right">
+      <button class="btn-logout" onclick="logoutAdmin()">登出鎖定</button>
+      <div class="status-badge" id="syncStatus">連線中...</div>
+    </div>
   </header>
 
   <div class="grid" id="ordersGrid"></div>
@@ -70,6 +76,9 @@
     // 2. 自訂店家後台管理密碼
     const ADMIN_PASSWORD = "1023";
 
+    let syncInterval = null;
+    let knownOrderCount = 0;
+
     // 檢查本機是否已經驗證過
     if (localStorage.getItem("admin_authenticated") === "true") {
       document.getElementById("authOverlay").style.display = "none";
@@ -81,17 +90,27 @@
       if (input === ADMIN_PASSWORD) {
         localStorage.setItem("admin_authenticated", "true");
         document.getElementById("authOverlay").style.display = "none";
+        document.getElementById("pwdError").style.display = "none";
         initAdmin();
       } else {
         document.getElementById("pwdError").style.display = "block";
       }
     }
 
-    let knownOrderCount = 0;
+    function logoutAdmin() {
+      if (confirm("確定要登出並鎖定接單後台嗎？")) {
+        localStorage.removeItem("admin_authenticated");
+        if (syncInterval) clearInterval(syncInterval);
+        document.getElementById("pwdInput").value = "";
+        document.getElementById("authOverlay").style.display = "flex";
+      }
+    }
 
     function initAdmin() {
       fetchOrders();
-      setInterval(fetchOrders, 5000);
+      if (!syncInterval) {
+        syncInterval = setInterval(fetchOrders, 5000);
+      }
     }
 
     function playBeep() {
