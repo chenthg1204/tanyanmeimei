@@ -248,7 +248,7 @@
         { name: "熱狗", price: 20, options: [] },
         { name: "荷包蛋", price: 10, options: ["eggDoneness"] }
       ],
-      "果醬吐司": [
+      "果醬": [
         { name: "草莓果醬", price: 15, options: ["toastType"] },
         { name: "花生醬", price: 15, options: ["toastType"] },
         { name: "奶酥醬", price: 15, options: ["toastType"] },
@@ -397,22 +397,44 @@
       document.getElementById("optModal").style.display = "none";
     }
 
+// 加入購物車
     function addToCartConfirm() {
       let optTexts = [];
-      if (modalItem.options.includes("onion")) optTexts.push(selectedOpts.onion);
-      if (modalItem.options.includes("crust")) optTexts.push(selectedOpts.crust);
-      if (modalItem.options.includes("toastType")) optTexts.push(selectedOpts.toastType);
-      if (modalItem.options.includes("drinkSize")) optTexts.push(selectedOpts.size);
-      if (modalItem.options.includes("drinkTemp")) optTexts.push(selectedOpts.temp);
-      if (modalItem.options.includes("sauce")) optTexts.push(selectedOpts.sauce);
-      if (modalItem.options.includes("eggDoneness")) optTexts.push(selectedOpts.eggDoneness);
-      if (selectedOpts.cheese) optTexts.push("加起司");
+      
+      // 只有當該餐點有支援該選項時，才加入備註字串
+      if (modalItem.options && modalItem.options.includes("onion")) {
+        optTexts.push(selectedOpts.onion);
+      }
+      if (modalItem.options && modalItem.options.includes("crust")) {
+        optTexts.push(selectedOpts.crust);
+      }
+      if (modalItem.options && modalItem.options.includes("toastType")) {
+        optTexts.push(selectedOpts.toastType);
+      }
+      if (modalItem.options && modalItem.options.includes("drinkSize")) {
+        optTexts.push(selectedOpts.size);
+      }
+      if (modalItem.options && modalItem.options.includes("drinkTemp")) {
+        optTexts.push(selectedOpts.temp);
+      }
+      if (modalItem.options && modalItem.options.includes("sauce") && selectedOpts.sauce !== "不加醬" && selectedOpts.sauce !== "無") {
+        optTexts.push(selectedOpts.sauce);
+      }
+      if (modalItem.options && modalItem.options.includes("eggDoneness")) {
+        optTexts.push(selectedOpts.eggDoneness);
+      }
+      if (selectedOpts.cheese) {
+        optTexts.push("加起司");
+      }
+
+      // 過濾掉空字串或無效文字
+      const cleanDesc = optTexts.filter(t => t && t.trim() !== "").join(", ");
 
       cart.push({
         name: modalItem.name,
         price: calcUnitPrice(),
         qty: modalQty,
-        desc: optTexts.join(", ")
+        desc: cleanDesc
       });
 
       closeOptModal();
