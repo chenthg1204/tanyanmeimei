@@ -33,7 +33,7 @@
     .auth-input { width: 100%; padding: 12px; font-size: 18px; border: 1px solid #ccc; border-radius: 8px; text-align: center; margin: 16px 0; letter-spacing: 4px; }
     .btn-auth { width: 100%; background: #d32f2f; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; }
 
-    /* 熱感應小票列印專用樣式 */
+    /* 熱感應小票列印樣式 */
     @media print {
       body * { visibility: hidden; }
       #printArea, #printArea * { visibility: visible; }
@@ -67,10 +67,10 @@
   <div id="printArea" style="display:none;"></div>
 
   <script>
-    // 1. 你的 Google Apps Script 網址
+    // 1. Google Apps Script 部署網址
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzcHD3IRPUs26K3Q-MOyEn3NEVgmznLMmcTM1xXLATBhx9Qi3Wc8d_tw1VCE4_3hBGE/exec";
 
-    // 2. 自訂店家後台管理密碼
+    // 2. 店家管理密碼
     const ADMIN_PASSWORD = "1023";
 
     let syncInterval = null;
@@ -109,20 +109,20 @@
       }
     }
 
-    // 將各種長格式時間強制轉換成 yyyy-MM-dd HH:mm:ss
-    function formatOrderTime(rawStr) {
+    // 前端時間防呆格式化 (確保顯示 yyyy-MM-dd HH:mm)
+    function cleanTimeString(rawStr) {
       if (!rawStr) return "";
-      const d = new Date(rawStr);
+      const str = String(rawStr).trim();
+      const d = new Date(str);
       if (!isNaN(d.getTime())) {
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         const hours = String(d.getHours()).padStart(2, '0');
         const mins = String(d.getMinutes()).padStart(2, '0');
-        const secs = String(d.getSeconds()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hours}:${mins}:${secs}`;
+        return `${year}-${month}-${day} ${hours}:${mins}`;
       }
-      return String(rawStr).replace("T", " ").split(".")[0];
+      return str.replace("T", " ").split(".")[0];
     }
 
     function playBeep() {
@@ -163,7 +163,7 @@
 
       orders.slice().reverse().forEach(o => {
         const isDone = o.status === "已完成";
-        const displayTime = formatOrderTime(o.time);
+        const displayTime = cleanTimeString(o.time);
         const card = document.createElement("div");
         card.className = `order-card ${isDone ? 'done' : ''}`;
         card.innerHTML = `
