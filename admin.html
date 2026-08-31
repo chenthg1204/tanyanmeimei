@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>店家接單與出單後台</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: #eceff1; padding: 16px; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; background: #263238; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px; }
+    .status-badge { font-size: 14px; background: #37474f; padding: 4px 10px; border-radius: 12px; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    
+    .order-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; border-left: 6px solid #d32f2f; }
+    .order-card.done { border-left-color: #4caf50; opacity: 0.6; }
+    
+    .card-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px dashed #ccc; padding-bottom: 8px; }
+    .order-no { font-size: 26px; font-weight: bold; color: #1976d2; }
+    .dining-tag { font-size: 14px; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: #ffebee; color: #c62828; }
+    
+    .card-body { margin: 12px 0; font-size: 15px; line-height: 1.5; white-space: pre-line; flex: 1; }
+    .card-foot { border-top: 1px dashed #ccc; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .order-total { font-size: 20px; font-weight: bold; color: #d32f2f; }
+    
+    .btn-print { background: #d32f2f; color: white; border: none; padding: 10px 16px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .btn-print:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* 熱感應小票列印專用樣式 */
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left: 0; top: 0; width: 58mm; padding: 2mm; font-family: monospace; color: black; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h2 style="margin:0; font-size:20px;">美又美 潭陽店 - 接單櫃檯</h2>
+    <div class="status-badge" id="syncStatus">連線中...</div>
+  </header>
+
+  <div class="grid" id="ordersGrid"></div>
+
+  <!-- 列印專用隱藏區塊 -->
+  <div id="printArea" style="display:none;"></div>
+
+  <script>
+    // 貼上你的 Google Apps Script 網址
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzcHD3IRPUs26K3Q-MOyEn3NEVgmznLMmcTM1xXLATBhx9Qi3Wc8d_tw1VCE4_3hBGE/exec";
+
+    let knownOrderCount = 0;
+
+    // 提示音效 (使用瀏覽器 Audio API 合成音)
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880; // A5 頻率
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+        osc.stop(ctx.currentTime + 0.5);
+      } catch(e) {}
+    }
+
+    // 定時抓取訂單
+    async function fetchOrders() {
+      try {
+        const res = await fetch(GAS_API_URL);
+        const orders = await res.json();
+        document.getElementById("syncStatus").innerText = "最後同步：" + new Date().toLocaleTimeString();
+        
+        // 判斷是否有新訂單進入
+        const pendingOrders = orders.filter(o => o.status === "待處理");
+        if (pendingOrders.length > knownOrderCount) {
+          playBeep();
+        }
+        knownOrderCount = pendingOrders.length;
+
+        renderOrders(orders);
+      } catch (err) {
+        document.getElementById("syncStatus").innerText = "連線異常，重試中...";
+      }
+    }
+
+    function renderOrders(orders) {
+      const grid = document.getElementById("ordersGrid");
+      grid.innerHTML = "";
+
+      // 倒序排列，最新訂單排在最前
+      orders.slice().reverse().forEach(o => {
+        const isDone = o.status === "已完成";
+        const card = document.createElement("div");
+        card.className = `order-card ${isDone ? 'done' : ''}`;
+        card.innerHTML = `
+          <div>
+            <div class="card-head">
+              <span class="order-no">${o.orderNo}</span>
+              <span class="dining-tag">${o.diningType} (${o.time})</span>
+            </div>
+            <div class="card-body">${o.items}</div>
+          </div>
+          <div class="card-foot">
+            <div class="order-total">$${o.total}</div>
+            <button class="btn-print" ${isDone ? 'disabled' : ''} onclick="confirmAndPrint(${o.row}, '${o.orderNo}', '${o.diningType}', '${encodeURIComponent(o.items)}', '${o.total}')">
+              ${isDone ? '已完成出單' : '收款並出單'}
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // 店家確認收款 ➔ 呼叫出單機列印 ➔ 標記已完成
+    async function confirmAndPrint(row, orderNo, diningType, itemsEncoded, total) {
+      const items = decodeURIComponent(itemsEncoded);
+
+      // 產生熱感應單內容
+      const printDiv = document.getElementById("printArea");
+      printDiv.style.display = "block";
+      printDiv.innerHTML = `
+        <div style="text-align:center; font-size:18px; font-weight:bold;">美又美 潭陽店</div>
+        <div style="text-align:center; font-size:24px; font-weight:bold; margin:4px 0;">${orderNo}</div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px dashed #000; padding-bottom:4px;">
+          <span>${diningType}</span>
+          <span>${new Date().toLocaleTimeString()}</span>
+        </div>
+        <div style="margin:8px 0; font-size:14px; line-height:1.4;">${items.replace(/\n/g, '<br>')}</div>
+        <div style="border-top:1px dashed #000; padding-top:4px; text-align:right; font-size:16px; font-weight:bold;">
+          總金額: $${total}
+        </div>
+      `;
+
+      // 喚醒系統列印 (TM-m30III 會透過 Wi-Fi 直接印出)
+      window.print();
+      printDiv.style.display = "none";
+
+      // 更新試算表狀態為「已完成」
+      await fetch(GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "updateStatus", row: row })
+      });
+
+      fetchOrders();
+    }
+
+    // 初次載入與每 5 秒輪詢一次
+    fetchOrders();
+    setInterval(fetchOrders, 5000);
+  </script>
+</body>
+</html>
